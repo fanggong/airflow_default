@@ -1,4 +1,3 @@
-# 执行sql文件
 from airflow import DAG
 from airflow.providers.mysql.operators.mysql import MySqlOperator
 from airflow.utils.dates import days_ago
@@ -6,15 +5,15 @@ from airflow.utils.dates import timedelta
 
 
 with DAG(
-    'example_parameters',
+    'example_template_reference',
     default_args={'owner': 'Fang', 'retries': 1},
-    schedule_interval=timedelta(days=1),
-    start_date=days_ago(0),
-    catchup=False,
+    schedule_interval='0 */2 * * *',
+    start_date=days_ago(1),
+    catchup=False
 ) as dag:
     mission = MySqlOperator(
-        task_id='example_parameters',
-        sql='sql/example_parameters.sql',
+        task_id='example_template_reference',
+        sql='sql/example_template_reference.sql',
         mysql_conn_id='mysql_default',
         autocommit=True,
     )

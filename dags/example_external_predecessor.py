@@ -1,22 +1,19 @@
-# 执行sql文件
 from airflow import DAG
 from airflow.providers.mysql.operators.mysql import MySqlOperator
 from airflow.utils.dates import days_ago
-from airflow.utils.dates import timedelta
 
 
 with DAG(
-    'example_simple_sql',
+    'example_external_predecessor',
     default_args={'owner': 'Fang', 'retries': 1},
-    schedule_interval=timedelta(days=1),
+    schedule_interval='0 */2 * * *',
     start_date=days_ago(1),
     catchup=False,
 ) as dag:
-    mission = MySqlOperator(
-        task_id='execute_simple_sql',
-        sql='sql/example_simple_sql.sql',
+    ods2dwd = MySqlOperator(
+        task_id='ods2dwd',
+        sql='sql/ods2dwd.sql',
         mysql_conn_id='mysql_default',
         autocommit=True,
     )
-
-    mission
+    ods2dwd

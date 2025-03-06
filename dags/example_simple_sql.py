@@ -9,8 +9,8 @@ with DAG(
     'example_simple_sql',
     default_args={'owner': 'Fang', 'retries': 1},
     schedule_interval=timedelta(days=1),
-    start_date=days_ago(1),
-    catchup=False,
+    start_date=days_ago(5),
+    catchup=True,
 ) as dag:
     mission = MySqlOperator(
         task_id='execute_simple_sql',

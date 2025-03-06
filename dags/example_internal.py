@@ -8,7 +8,7 @@ with DAG(
     'example_internal',
     default_args={'owner': 'Fang', 'retries': 1},
     schedule_interval=timedelta(days=1),
-    start_date=days_ago(1),
+    start_date=days_ago(0),
     catchup=False,
 ) as dag:
     ods2dwd = MySqlOperator(

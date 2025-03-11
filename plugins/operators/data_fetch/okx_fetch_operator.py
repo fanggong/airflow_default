@@ -1,5 +1,6 @@
 from airflow.models.baseoperator import BaseOperator
 
+
 class OkxFetchOperator(BaseOperator):
     """OKX 数据获取 Operator
 
@@ -19,10 +20,10 @@ class OkxFetchOperator(BaseOperator):
             response = self.api(**self.params)
             
             if response['code'] == '0':
-                self.log.info(f'接口返回数据成功: {response['data']}')
+                self.log.info(f"接口返回数据成功: {response['data']}")
                 return response
             else:
-                self.log.info(f'接口返回数据失败: {response['msg']}')
+                self.log.info(f"接口返回数据失败: {response['msg']}")
         except Exception as e:
             self.log.error(f'接口请求失败: {str(e)}')
             raise e

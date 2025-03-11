@@ -1,6 +1,6 @@
 from airflow import DAG
 from plugins.operators.mysql.init_mysql_operator import InitMysqlOperator
-from plugins.operators.okx_fetch_operator import OkxFetchOperator
+from plugins.operators.data_fetch.okx_fetch_operator import OkxFetchOperator
 from plugins.operators.mysql.sync_mysql_operator import SyncMysqlOperator
 from airflow.operators.python import PythonOperator
 from include.models.balance import Balance
@@ -66,12 +66,13 @@ def process_data(**context):
 
 
 with DAG(
-    dag_id='sync_balance',
+    dag_id='balance',
     schedule=None,
-    default_args={'owner': 'Fang'}
+    default_args={'owner': 'Fang'},
+    tags=['crypto', 'sync']
 ) as dag:
     config = Variable.get('okx', deserialize_json=True)
-    api = AccountAPI(**config, flag='0').get_account_balance
+    api = AccountAPI(**config).get_account_balance
 
     init = InitMysqlOperator(
         task_id='init', 

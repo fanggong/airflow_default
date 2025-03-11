@@ -3,7 +3,7 @@ import json
 import logging
 import websockets
 
-from app.okx.websocket.WebSocketFactory import WebSocketFactory
+from okx.websocket.WebSocketFactory import WebSocketFactory
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("WsPublic")

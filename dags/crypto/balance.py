@@ -4,7 +4,7 @@ from plugins.operators.data_fetch.okx_fetch_operator import OkxFetchOperator
 from plugins.operators.mysql.sync_mysql_operator import SyncMysqlOperator
 from airflow.operators.python import PythonOperator
 from include.models.balance import Balance
-from include.utils import from_timestamp, process_keys
+from include.utils.utils import from_timestamp, process_keys
 from include.database.mysql_own import db_session, engine
 from include.okx.Account import AccountAPI
 from airflow.models import Variable
@@ -74,24 +74,9 @@ with DAG(
     config = Variable.get('okx', deserialize_json=True)
     api = AccountAPI(**config).get_account_balance
 
-    init = InitMysqlOperator(
-        task_id='init', 
-        table=Balance,
-        engine=engine
-    )
-    fetch = OkxFetchOperator(
-        task_id='fetch',
-        api=api
-    )
-    process = PythonOperator(
-        task_id='process',
-        python_callable=process_data
-    )
-    sync = SyncMysqlOperator(
-        task_id='sync', 
-        table=Balance,
-        session=db_session,
-        type='full'
-    )
+    init = InitMysqlOperator(task_id='init', table=Balance, engine=engine)
+    fetch = OkxFetchOperator(task_id='fetch', api=api)
+    process = PythonOperator(task_id='process', python_callable=process_data)
+    sync = SyncMysqlOperator(task_id='sync', table=Balance, session=db_session, type='full')
 
     init >> fetch >> process >> sync

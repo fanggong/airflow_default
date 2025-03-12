@@ -1,6 +1,4 @@
 from airflow.models.baseoperator import BaseOperator
-from airflow.utils.decorators import apply_defaults
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.dialects.mysql import insert
 
 class SyncMysqlOperator(BaseOperator):

@@ -5,9 +5,7 @@ from include.database.mysql_own import engine, db_session
 from airflow.models import Variable
 from include.okx.Account import AccountAPI
 from include.utils.utils import from_timestamp, process_keys
-import logging
-
-logger = logging.getLogger('ariflow_task')
+from datetime import datetime
 
 
 def process_item(item):
@@ -80,21 +78,22 @@ def process_item(item):
     item = process_keys(item, key_mapping)
     return item
 
-@dag(schedule=None, default_args={'owner': 'Fang'}, tags=['crypto', 'sync'])
+@dag(schedule_interval='*/30 * * * *', default_args={'owner': 'Fang'}, tags=['crypto', 'sync'],
+     start_date=datetime(2023, 1, 1), catchup=False)
 def positions():
 
     @task
-    def process(dat):
-        if dat['code'] == '0':
-            dat = dat['data']
-            dat = [process_item(item) for item in dat]
-            return dat
+    def process(data):
+        if data['code'] == '0':
+            data = data['data']
+            data = [process_item(item) for item in data]
+            return data
         else:
             return []
 
-    init_mysql(table=Positions, engine=engine)
     config = Variable.get('okx', deserialize_json=True)
     api = AccountAPI(**config).get_positions
+    init_mysql(table=Positions, engine=engine)
     data = okx_fetch(api=api)
     processed_data = process(data)
     sync_mysql(data_list=processed_data, table=Positions, session=db_session, type='full')

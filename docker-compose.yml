@@ -23,6 +23,7 @@ services:
     environment:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:${POSTGRES_PASSWORD}@postgres/airflow
+      - AIRFLOW__CORE__DEFAULT_TIMEZONE=Asia/Shanghai
     volumes:
       - ./config:/opt/airflow/config
       - ./requirements.txt:/opt/airflow/requirements.txt
@@ -39,6 +40,7 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:${POSTGRES_PASSWORD}@postgres/airflow
       - AIRFLOW__WEBSERVER__WORKERS=4
       - AIRFLOW__WEBSERVER__PORT=8080
+      - AIRFLOW__CORE__DEFAULT_TIMEZONE=Asia/Shanghai
     ports:
       - "8080:8080"
     volumes:
@@ -56,6 +58,7 @@ services:
     environment:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:${POSTGRES_PASSWORD}@postgres/airflow
+      - AIRFLOW__CORE__DEFAULT_TIMEZONE=Asia/Shanghai
       - PYTHONPATH=/opt/airflow
     volumes:
       - ./dags:/opt/airflow/dags

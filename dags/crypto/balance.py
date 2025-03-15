@@ -8,6 +8,8 @@ from include.utils.utils import from_timestamp, process_keys
 from include.database.mysql_own import db_session, engine
 from include.okx.Account import AccountAPI
 from airflow.models import Variable
+from datetime import datetime
+
 
 def process_item(item):
     key_mapping = {
@@ -67,7 +69,9 @@ def process_data(**context):
 
 with DAG(
     dag_id='balance',
-    schedule=None,
+    schedule_interval='*/30 * * * *',
+    start_date=datetime(2023, 1, 1),
+    catchup=False,
     default_args={'owner': 'Fang'},
     tags=['crypto', 'sync']
 ) as dag:

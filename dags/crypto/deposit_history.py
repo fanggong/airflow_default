@@ -1,7 +1,7 @@
 from airflow.decorators import task, dag
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.operators.python import PythonOperator
-from include.service import init_mysql, okx_fetch, sync_mysql
+from include.service import init_mysql, okx_fetch, write_to_mysql
 from include.models.deposit_history import DepositHistory
 from include.utils.utils import from_timestamp, process_keys
 from include.database.mysql_own import engine, db_session
@@ -38,9 +38,32 @@ def process_item(item):
      start_date=datetime(2023, 1, 1), catchup=False)
 def deposit_history():
     @task
-    def get_parameters(**kwargs):
-        # start_time = kwargs['data_interval_start']
-        start_time = datetime(2022, 1, 1)
+    def process_data(raw_data):
+        processed_data = [process_item(item) for item in raw_data]
+        logger.info(f'数据处理完成: {len(processed_data)} items')
+        return processed_data
+        
+
+    @task.branch
+    def continue_branch(processed_data):
+        branch = 'rerun_dag' if len(processed_data) > 0 else 'end_dag'
+        logger.info(f'运行分支: {branch}')
+        return branch
+
+    @task
+    def update_params(raw_data):
+        before = raw_data[0]['ts'] if raw_data else None
+        params = {'before': before}
+        logger.info(f'参数更新: {params}')
+        return params
+    
+    @task
+    def init_table():
+        init_mysql(table=DepositHistory, engine=engine)
+
+    @task
+    def fetch_data(**kwargs):
+        start_time = kwargs['data_interval_start']
         params = {
             'before': int(start_time.timestamp()*1000)
         }
@@ -52,43 +75,21 @@ def deposit_history():
             params['before'] = before
         
         logger.info(f'获取接口参数: {params}')
-        return params
+
+        api = FundingAPI(**Variable.get('okx', deserialize_json=True)).get_deposit_history
+        raw_data = okx_fetch(api=api, param=params)
+        return raw_data
     
     @task
-    def process_data(raw_data):
-        if raw_data['code'] == '0':
-            raw_data = raw_data['data']
-            processed_data = [process_item(item) for item in raw_data]
-            logger.info(f'数据处理完成: {len(processed_data)} items')
-            return processed_data
-        else:
-            return []
+    def sync_data(processed_data):
+        write_to_mysql(processed_data, table=DepositHistory, session=db_session, type='increment')
 
 
-    @task.branch
-    def continue_branch(processed_data):
-        branch = 'rerun_dag' if len(processed_data) > 0 else 'end_dag'
-        logger.info(f'运行分支: {branch}')
-        return branch
-
-    @task
-    def update_params(raw_data):
-        before = raw_data['data'][0]['ts'] if raw_data['data'] else None
-        params = {'before': before}
-        logger.info(f'参数更新: {params}')
-        return params
-    
-    init_mysql(table=DepositHistory, engine=engine)
-
-    config = Variable.get('okx', deserialize_json=True)
-    api = FundingAPI(**config).get_deposit_history
-
-    params = get_parameters()
-    raw_data = okx_fetch(api=api, params=params)
+    init_table()
+    raw_data = fetch_data()
     processed_data = process_data(raw_data)
-
-    sync_mysql(processed_data, table=DepositHistory, session=db_session, type='increment')
-
+    sync_data(processed_data)
+    
     should_continue = continue_branch(processed_data)
     updated_params = update_params(raw_data=raw_data)
 

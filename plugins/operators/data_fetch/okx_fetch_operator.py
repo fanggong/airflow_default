@@ -2,26 +2,20 @@ from airflow.models.baseoperator import BaseOperator
 
 
 class OkxFetchOperator(BaseOperator):
-    """OKX 数据获取 Operator
-
-    :param api: 已封装的 API 方法（可调用对象）
-    :param params: 传入 API 的参数
-    """
-
-    def __init__(self, api, params=None, *args, **kwargs):
+    def __init__(self, api, param=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.api = api
-        self.params = params or {}
+        self.param = param or {}
 
     def execute(self, context):
         """执行 API 请求"""
         try:
-            self.log.info(f'调用接口 {self.api.__name__}，参数：{self.params}')
-            response = self.api(**self.params)
+            self.log.info(f'调用接口 {self.api.__name__}，参数：{self.param}')
+            response = self.api(**self.param)
             
             if response['code'] == '0':
                 self.log.info(f"接口返回数据成功: {response['data']}")
-                return response
+                return response['data']
             else:
                 self.log.info(f"接口返回数据失败: {response['msg']}")
         except Exception as e:

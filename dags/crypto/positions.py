@@ -1,5 +1,5 @@
 from airflow.decorators import task, dag
-from include.service import init_mysql, okx_fetch, sync_mysql
+from include.service import init_mysql, okx_fetch, write_to_mysql
 from include.models.positions import Positions
 from include.database.mysql_own import engine, db_session
 from airflow.models import Variable
@@ -81,21 +81,28 @@ def process_item(item):
 @dag(schedule_interval='*/30 * * * *', default_args={'owner': 'Fang'}, tags=['crypto', 'sync'],
      start_date=datetime(2023, 1, 1), catchup=False)
 def positions():
+    @task
+    def init_table():
+        init_mysql(table=Positions, engine=engine)
 
     @task
-    def process(data):
-        if data['code'] == '0':
-            data = data['data']
-            data = [process_item(item) for item in data]
-            return data
-        else:
-            return []
+    def fetch_data():
+        api = AccountAPI(**Variable.get('okx', deserialize_json=True)).get_positions
+        data = okx_fetch(api=api, param=None)
+        return data
+    
+    @task
+    def process_data(raw_data):
+        processed_data = [process_item(item) for item in raw_data]
+        return processed_data
+    
+    @task
+    def sync_data(processed_data):
+         write_to_mysql(data=processed_data, table=Positions, session=db_session, type='full')
 
-    config = Variable.get('okx', deserialize_json=True)
-    api = AccountAPI(**config).get_positions
-    init_mysql(table=Positions, engine=engine)
-    data = okx_fetch(api=api)
-    processed_data = process(data)
-    sync_mysql(data_list=processed_data, table=Positions, session=db_session, type='full')
-
+    init_table()
+    raw_data = fetch_data()
+    processed_data = process_data(raw_data)
+    sync_data(processed_data)
+    
 positions()

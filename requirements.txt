@@ -1,6 +1,8 @@
 apache-airflow==2.10.5
 certifi==2025.1.31
+cos_python_sdk_v5==1.9.35
 httpx==0.28.1
+pendulum==3.0.0
 Requests==2.32.3
 SQLAlchemy==1.4.54
 websockets==15.0.1

@@ -62,7 +62,7 @@ def process_data(**context):
     fetched_data = context['task_instance'].xcom_pull(task_ids='fetch', key='return_value')
     if not fetched_data:
         raise ValueError("未获取到数据！")
-    processed_data = fetched_data['data'][0]['details']
+    processed_data = fetched_data[0]['details']
     processed_data = [process_item(item) for item in processed_data]
     return processed_data 
 
@@ -79,7 +79,7 @@ with DAG(
     api = AccountAPI(**config).get_account_balance
 
     init = InitMysqlOperator(task_id='init', table=Balance, engine=engine)
-    fetch = OkxFetchOperator(task_id='fetch', api=api)
+    fetch = OkxFetchOperator(task_id='fetch', api=api, param=None)
     process = PythonOperator(task_id='process', python_callable=process_data)
     sync = SyncMysqlOperator(task_id='sync', table=Balance, session=db_session, type='full')
 

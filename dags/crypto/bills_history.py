@@ -1,7 +1,7 @@
 from airflow.decorators import task, dag
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.operators.python import PythonOperator
-from include.service import init_mysql, okx_fetch, sync_mysql
+from include.service import init_mysql, okx_fetch, write_to_mysql
 from include.models.bills_history import BillsHistory
 from include.utils.utils import from_timestamp, process_keys
 from include.database.mysql_own import engine, db_session
@@ -55,7 +55,11 @@ def process_item(item):
      start_date=datetime(2023, 1, 1), catchup=False)
 def bills_history():
     @task
-    def get_parameters(**kwargs):
+    def init_table():
+        init_mysql(table=BillsHistory, engine=engine)
+
+    @task
+    def fetch_data(**kwargs):
         start_time = kwargs['data_interval_start']
         end_time = kwargs['data_interval_end']
         params = {
@@ -70,18 +74,21 @@ def bills_history():
             params['after'] = after
         
         logger.info(f'获取接口参数: {params}')
-        return params
+
+        api = AccountAPI(**Variable.get('okx', deserialize_json=True)).get_account_bills_archive
+        data = okx_fetch(api=api, param=params)
+        return data
+        
     
     @task
     def process_data(raw_data):
-        if raw_data['code'] == '0':
-            raw_data = raw_data['data']
-            processed_data = [process_item(item) for item in raw_data]
-            logger.info(f'数据处理完成: {len(processed_data)} items')
-            return processed_data
-        else:
-            return []
+        processed_data = [process_item(item) for item in raw_data]
+        logger.info(f'数据处理完成: {len(processed_data)} items')
+        return processed_data
 
+    @task
+    def sync_data(processed_data):
+        write_to_mysql(processed_data, table=BillsHistory, session=db_session, type='increment')
 
     @task.branch
     def continue_branch(processed_data):
@@ -95,18 +102,13 @@ def bills_history():
         params = {'after': after}
         logger.info(f'参数更新: {params}')
         return params
+
     
-    init_mysql(table=BillsHistory, engine=engine)
-
-    config = Variable.get('okx', deserialize_json=True)
-    api = AccountAPI(**config).get_account_bills_archive
-
-    params = get_parameters()
-    data = okx_fetch(api=api, params=params)
-    processed_data = process_data(data)
-
-    sync_mysql(processed_data, table=BillsHistory, session=db_session, type='increment')
-
+    init_table()
+    raw_data = fetch_data()
+    processed_data = process_data(raw_data)
+    sync_data(processed_data)
+    
     should_continue = continue_branch(processed_data)
     updated_params = update_params(processed_data)
 
